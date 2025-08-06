@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérificateur d'alignement pédagogique</title>
+    <!-- CDN Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CDN Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Police de caractères personnalisée*/
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* S'assurer que les icônes Lucide sont rendues correctement */
+        .lucide {
+            display: inline-block;
+        }
+        /* En-tête de tableau collant */
+        .sticky-header th {
+            position: sticky;
+            left: 0;
+            background-color: inherit; /* Hérite la couleur de fond du parent pour correspondre à la ligne */
+            z-index: 10;
+        }
+        /* Colonne de tableau collante */
+        .sticky-column td {
+            position: sticky;
+            left: 0;
+            background-color: inherit; /* Hérite la couleur de fond du parent pour correspondre à la ligne */
+            z-index: 9;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Alignement pédagogique | Prototype </h1>
+            <p class="text-slate-600 mt-2 text-lg">Un outil de réflexion basé sur le principe d'<b>alignement constructif</b> de John Biggs.</p>
+        </header>
+
+        <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <!-- Composante Stepper -->
+            <div id="stepper" class="flex justify-between items-center">
+                <!-- Les étapes seront rendues ici par JavaScript -->
+            </div>
+
+            <!-- Zone de contenu principale pour les étapes -->
+            <div id="step-content" class="mt-8">
+                <!-- Le contenu de l'étape sera rendu ici par JavaScript -->
+            </div>
+        </div>
+
+        <footer class="text-center mt-8 text-slate-500 text-sm">
+  
+            <p class="mt-2">Version de travail 1.3 | Alexandra Lez | juillet 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // État global de l'application
+        let state = {
+            step: 1,
+            objectives: [],
+            assessments: [],
+            activities: [],
+        };
+
+        // Références pour les principes pédagogiques et les recommandations proposées
+        const fullReferences = {
+            "Biggs2011": "Biggs, J., & Tang, C. (2011). Teaching for Quality Learning at University (4th ed.). Open University Press.",
+            "Bonwell1991": "Bonwell, C. C., & Eison, J. A. (1991). Active learning: Creating excitement in the classroom. ASHE-ERIC Higher Education Report No. 1. Washington, D.C.: George Washington University, School of Education and Human Development.",
+            "Black1998": "Black, P., & Wiliam, D. (1998). Inside the Black Box: Raising Standards Through Classroom Assessment. Phi Delta Kappan, 80(2), 139-148.",
+            "CAST2018": "CAST. (2018). Universal Design for Learning Guidelines version 2.2. Retrieved from https://udlguidelines.cast.org",
+            "Chickering1987": "Chickering, A. W., & Gamson, Z. F. (1987). Seven Principles for Good Practice in Undergraduate Education. AAHE Bulletin, 39(7), 3-7.",
+            "Wiggins2005": "Wiggins, G., & McTighe, J. (2005). Understanding by Design (2nd ed.). ASCD.",
+            "Hattie2007": "Hattie, J., & Timperley, H. (2007). The Power of Feedback. Review of Educational Research, 77(1), 81–112.",
+            "Gibbs1992": "Gibbs, G. (1992). Improving the quality of student learning. Bristol, UK: Technical and Educational Services.",
+            "Sweller1988": "Sweller, J. (1988). Cognitive load theory. In P. W. Merrill, M. R. Merrill, & J. M. Spector (Eds.), Instructional design theories and models: A new paradigm of instructional theory (Vol. 2, pp. 293-305). Lawrence Erlbaum Associates.",
+            "Johnson1991": "Johnson, D. W., Johnson, R. T., & Smith, K. A. (1991). Active learning: Cooperation in the college classroom. Interaction Book Company."
+        };
+
+        // Fonction utilitaire pour rendre les icônes Lucide
+        const renderLucideIcon = (iconName, classes = '') => {
+            return `<i data-lucide="${iconName}" class="lucide ${classes}"></i>`;
+        };
+
+        // Fonction pour mettre à jour le DOM en fonction de l'état actuel
+        const renderApp = () => {
+            renderStepper();
+            renderStepContent();
+            // Après le rendu, s'assurer que les icônes Lucide sont correctement initialisées
+            lucide.createIcons();
+        };
+
+        // --- Composante : InfoBox ---
+        const renderInfoBox = (title, iconName, children, referenceKey = null) => {
+            const referenceText = referenceKey ? `<i>Référence : ${fullReferences[referenceKey]}</i>` : '';
+            return `
+                <div class="mt-6 mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+                    <div class="flex items-center">
+                        <div class="text-blue-600">${renderLucideIcon(iconName)}</div>
+                        <h4 class="ml-3 text-lg font-semibold text-blue-800">${title}</h4>
+                    </div>
+                    <div class="mt-2 ml-1 text-blue-700 text-sm">
+                        ${children}
+                        ${referenceText ? `<p class="mt-2 text-xs text-blue-600">${referenceText}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        };
+
+        // --- Composante : Stepper ---
+        const renderStepper = () => {
+            const steps = [
+                { number: 1, title: 'Objectifs', icon: 'target' },
+                { number: 2, title: 'Évaluations', icon: 'file-text' },
+                { number: 3, title: 'Activités d’apprentissage', icon: 'activity' },
+                { number: 4, title: 'Résultat d’analyse global', icon: 'bar-chart-2' },
+            ];
+
+            const stepperHtml = steps.map((step, index) => `
+                <div class="flex flex-col items-center text-center w-20">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${state.step >= step.number ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}">
+                        ${renderLucideIcon(step.icon, 'w-6 h-6')}
+                    </div>
+                    <p class="mt-2 text-sm font-semibold ${state.step >= step.number ? 'text-blue-600' : 'text-slate-500'}">${step.title}</p>
+                </div>
+                ${index < steps.length - 1 ? `<div class="flex-1 h-1 mx-2 transition-all duration-300 ${state.step > step.number ? 'bg-blue-600' : 'bg-slate-200'}"></div>` : ''}
+            `).join('');
+
+            document.getElementById('stepper').innerHTML = stepperHtml;
+        };
+
+        // --- Composante : InputForm ---
+        const renderInputForm = (placeholder, buttonText, onAddCallback) => {
+            return `
+                <form class="flex items-center gap-2" data-on-add="${onAddCallback}">
+                    <input
+                        type="text"
+                        placeholder="${placeholder}"
+                        class="flex-grow p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        required
+                    />
+                    <button type="submit" class="flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">
+                        ${renderLucideIcon('plus-circle', 'w-5 h-5')}
+                        <span>${buttonText}</span>
+                    </button>
+                </form>
+            `;
+        };
+
+        // --- Composante : ItemList (Générique) ---
+        const renderItemList = (items, type, title) => {
+            if (items.length === 0) {
+                return `
+                    <div class="mt-6">
+                        <h3 class="text-xl font-semibold text-slate-700 mb-3">${title} (${items.length})</h3>
+                        <p class="text-slate-500 italic text-center py-4">Aucun élément ajouté pour le moment.</p>
+                    </div>
+                `;
+            }
+            return `
+                <div class="mt-6">
+                    <h3 class="text-xl font-semibold text-slate-700 mb-3">${title} (${items.length})</h3>
+                    <ul class="space-y-2">
+                        ${items.map((item, index) => `
+                            <li class="flex items-center justify-between bg-slate-100 p-3 rounded-lg hover:bg-slate-200 transition-colors">
+                                <span class="text-slate-800 flex-1"><span class="font-bold">O${index + 1}:</span> ${item.text}</span>
+                                <button data-id="${item.id}" data-type="${type}" class="delete-item-btn ml-4 text-red-500 hover:text-red-700 transition" aria-label="Supprimer ${item.text}">
+                                    ${renderLucideIcon('trash-2', 'w-4 h-4')}
+                                </button>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        };
+
+        // --- Étape 1 : Objectifs ---
+        const renderObjectivesStep = () => {
+            const content = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Étape 1: Objectifs d'apprentissage</h2>
+                    <p class="text-slate-600 mt-1 mb-4">Listez les compétences ou les connaissances que les personnes étudiantes doivent maîtriser. Ce sont les piliers de votre cours.</p>
+                    
+                    ${renderInfoBox("Bonnes pratiques et recommendations", "lightbulb", `
+                        Pour énoncer clairement vos objectifs, nous vous proposons d’utiliser la méthode <strong>SMART</strong> (Spécifique, Mesurable, Atteignable, Réaliste, Temporellement défini). Vous pouvez aussi consulter la <strong>taxonomie de Bloom (révisée par Anderson et Krathwohl, 2001)</strong> pour vous aider à choisir des verbes d'action (par exemple : <i>définir, appliquer, analyser, évaluer, créer</i>) afin de bien cibler le niveau de compétence attendu.
+                    `)}
+
+                    ${renderInputForm("Par exemple : Analyser une étude de cas complexe", "Ajouter un objectif", "addObjective")}
+                    <div id="objectives-list">
+                        ${renderItemList(state.objectives, "objective", "Objectifs d'apprentissage")}
+                    </div>
+                    
+                    <div class="mt-8 flex justify-end">
+                        <button id="next-step-btn-1" class="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none" ${state.objectives.length === 0 ? 'disabled' : ''}>
+                            <span>Étape suivante</span>
+                            ${renderLucideIcon('arrow-right', 'w-5 h-5')}
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('step-content').innerHTML = content;
+
+            // Ici AddEventListener
+            document.querySelector('form[data-on-add="addObjective"]').addEventListener('submit', handleAddObjective);
+            document.getElementById('next-step-btn-1').addEventListener('click', () => setStep(2));
+            document.querySelectorAll('.delete-item-btn').forEach(btn => {
+                btn.addEventListener('click', handleDeleteItem);
+            });
+        };
+
+        // --- Étape 2 : Évaluations ---
+        const renderAssessmentsStep = () => {
+            const totalWeight = state.assessments.reduce((sum, a) => sum + a.weight, 0);
+            const content = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Étape 2: Évaluations</h2>
+                    <p class="text-slate-600 mt-1 mb-4"> Listez les évaluations et leur pondération. Ensuite, liez-les aux objectifs qu’elles mesurent.</p>
+
+                    ${renderInfoBox("Bonnes pratiques et recommandations", "lightbulb", `
+                        <strong>L’évaluation formative</strong> constitue un mode d’évaluation de nature diagnostique visant la régulation des apprentissages (Legendre, 2005). En effet, ce type d’évaluation est conçu pour soutenir l’apprentissage en fournissant une rétroaction continue aidant la personne étudiante à identifier ses forces et ses faiblesses et en lui permettant d’ajuster ses stratégies d’étude (Crooks, 2001).
+<strong>L’évaluation sommative</strong> permet de mesurer les acquis à la fin d’une période d’apprentissage. Elle sert à attribuer une note, un grade ou un bilan (Durand et Chouinard, 2006).
+Intégrer des évaluations formatives, qui encouragent le développement des compétences, et des évaluations sommatives, qui évaluent les connaissances acquises, s’avère <strong>une combinaison efficace pour favoriser l’apprentissage</strong>. En effet, la rétroaction des évaluations formatives a un effet positif sur l’apprentissage, ce qui permet aux élèves de mieux se préparer à leurs évaluations sommatives (Hattie et Timperley, 2007).
+
+                    `)}
+
+                    <form id="add-assessment-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                        <input type="text" id="assessment-text" placeholder="Par exemple : examen final" class="md:col-span-2 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                        <input type="number" id="assessment-weight" placeholder="Pondération (%)" class="p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="1" max="100" required />
+                        <button type="submit" class="md:col-span-3 w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">
+                            ${renderLucideIcon('plus-circle', 'w-5 h-5')}<span>Ajouter une évaluation</span>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6">
+                        <h3 class="text-xl font-semibold text-slate-700 mb-3">Évaluations ajoutées (${state.assessments.length})</h3>
+                        ${totalWeight > 0 ? `
+                            <div class="p-2 rounded-lg text-center font-bold mb-4 ${totalWeight === 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                Pondération totale : ${totalWeight}% ${totalWeight !== 100 ? `<span class="text-red-600 font-bold ml-2">(Attention : le total devrait être 100%)</span>` : ''}
+                            </div>
+                        ` : ''}
+                        ${state.assessments.length > 0 ? `
+                            <ul class="space-y-4">
+                                ${state.assessments.map(assessment => `
+                                    <li class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="font-bold text-lg text-slate-800">${assessment.text} (${assessment.weight}%)</span>
+                                            <button data-id="${assessment.id}" data-type="assessment" class="delete-item-btn text-red-500 hover:text-red-700 transition" aria-label="Supprimer ${assessment.text}">
+                                                ${renderLucideIcon('trash-2', 'w-4 h-4')}
+                                            </button>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-600 mb-2">Lier aux objectifs :</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${state.objectives.map((obj, index) => `
+                                                <button data-assessment-id="${assessment.id}" data-objective-id="${obj.id}" class="link-assessment-objective-btn px-3 py-1 text-sm rounded-full border-2 transition-all ${assessment.linkedObjectiveIds.includes(obj.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300 hover:border-blue-500'}" aria-label="Lier ${assessment.text} à objectif O${index + 1}">
+                                                    O${index + 1}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        ` : `<p class="text-slate-500 italic text-center py-4">Aucune évaluation ajoutée.</p>`}
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button id="prev-step-btn-2" class="bg-slate-200 text-slate-700 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition">Étape précédente</button>
+                        <button id="next-step-btn-2" class="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none" ${state.assessments.length === 0 ? 'disabled' : ''}>
+                            <span>Étape suivante</span>${renderLucideIcon('arrow-right', 'w-5 h-5')}
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('step-content').innerHTML = content;
+
+            // Ici EventListener
+            document.getElementById('add-assessment-form').addEventListener('submit', handleAddAssessment);
+            document.getElementById('prev-step-btn-2').addEventListener('click', () => setStep(1));
+            document.getElementById('next-step-btn-2').addEventListener('click', () => setStep(3));
+            document.querySelectorAll('.delete-item-btn').forEach(btn => {
+                btn.addEventListener('click', handleDeleteItem);
+            });
+            document.querySelectorAll('.link-assessment-objective-btn').forEach(btn => {
+                btn.addEventListener('click', handleUpdateAssessmentLinks);
+            });
+        };
+
+        // --- Étape 3 : Activités d’apprentissage ---
+        const renderActivitiesStep = () => {
+            const content = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Étape 3: Activités d'apprentissage</h2>
+                    <p class="text-slate-600 mt-1 mb-4">Listez les activités que les personnes étudiantes feront pour apprendre et atteindre les objectifs.</p>
+                    
+                    ${renderInfoBox("Bonnes pratiques et recommandations", "lightbulb", `
+                        L’<strong>apprentissage actif</strong> est une approche pédagogique qui met la personne étudiante au cœur de son propre processus d’apprentissage. Au lieu de se contenter de recevoir des informations, on propose à la personne étudiante de s’engager activement dans diverses activités, par exemple, des études de cas, des discussions, des projets d’équipe, etc. Selon différentes études, cette méthode permettrait une meilleure rétention de l’information à long terme (Freeman et coll., 2014), favoriserait le développement de la pensée critique, la collaboration et la résolution de problèmes, augmenterait la motivation et l’engagement cognitif (Crooks, 2001 ; Farrow et coll., 2022).
+                    `)}
+
+                    <form id="add-activity-form" class="flex items-center gap-2 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                        <input type="text" id="activity-text" placeholder="Par exemple : Étude de cas en équipe…" class="flex-grow p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                        <button type="submit" class="flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">
+                            ${renderLucideIcon('plus-circle', 'w-5 h-5')}<span>Ajouter l’activité d’apprentissage</span>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6">
+                        <h3 class="text-xl font-semibold text-slate-700 mb-3">Activités ajoutées (${state.activities.length})</h3>
+                        ${state.activities.length > 0 ? `
+                            <ul class="space-y-4">
+                                ${state.activities.map(activity => `
+                                    <li class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="font-bold text-lg text-slate-800">${activity.text}</span>
+                                            <button data-id="${activity.id}" data-type="activity" class="delete-item-btn text-red-500 hover:text-red-700 transition" aria-label="Supprimer ${activity.text}">
+                                                ${renderLucideIcon('trash-2', 'w-4 h-4')}
+                                            </button>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-600 mb-2">Lier aux objectifs :</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${state.objectives.map((obj, index) => `
+                                                <button data-activity-id="${activity.id}" data-objective-id="${obj.id}" class="link-activity-objective-btn px-3 py-1 text-sm rounded-full border-2 transition-all ${activity.linkedObjectiveIds.includes(obj.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300 hover:border-blue-500'}" aria-label="Lier ${activity.text} à objectif O${index + 1}">
+                                                    O${index + 1}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        ` : `<p class="text-slate-500 italic text-center py-4">Aucune activité ajoutée.</p>`}
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button id="prev-step-btn-3" class="bg-slate-200 text-slate-700 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition">Étape précédente</button>
+                        <button id="next-step-btn-3" class="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105">
+                            <span>Voir le Rapport</span>${renderLucideIcon('arrow-right', 'w-5 h-5')}
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('step-content').innerHTML = content;
+
+            // Ici EventListener
+            document.getElementById('add-activity-form').addEventListener('submit', handleAddActivity);
+            document.getElementById('prev-step-btn-3').addEventListener('click', () => setStep(2));
+            document.getElementById('next-step-btn-3').addEventListener('click', () => setStep(4));
+            document.querySelectorAll('.delete-item-btn').forEach(btn => {
+                btn.addEventListener('click', handleDeleteItem);
+            });
+            document.querySelectorAll('.link-activity-objective-btn').forEach(btn => {
+                btn.addEventListener('click', handleUpdateActivityLinks);
+            });
+        };
+
+        // --- Étape 4 : Rapport, observations et recommandations ---
+        const renderReportStep = () => {
+            const assessedObjectiveIds = new Set(state.assessments.flatMap(a => a.linkedObjectiveIds));
+            const practicedObjectiveIds = new Set(state.activities.flatMap(a => a.linkedObjectiveIds));
+
+            const analysis = {
+                unassessedObjectives: state.objectives.filter(o => !assessedObjectiveIds.has(o.id)),
+                unpracticedObjectives: state.objectives.filter(o => !practicedObjectiveIds.has(o.id)),
+                assessmentsWithoutObjectives: state.assessments.filter(a => a.linkedObjectiveIds.length === 0),
+                activitiesWithoutObjectives: state.activities.filter(a => a.linkedObjectiveIds.length === 0),
+            };
+
+            // Fonction améliorée renderAnalysisCard avec recommandations et principes
+            const renderAnalysisCard = (title, iconName, items, color, message, emptyMessage, recommendation = null, principle = null, referenceKey = null) => {
+                const referenceText = referenceKey ? `<i>Référence : ${fullReferences[referenceKey]}</i>` : '';
+                return `
+                    <div class="bg-${color}-50 border border-${color}-200 p-4 rounded-lg">
+                        <h4 class="font-bold text-${color}-800 flex items-center gap-2">${renderLucideIcon(iconName)}${title}</h4>
+                        <p class="text-sm text-${color}-600 mt-1 mb-2">${message}</p>
+                        ${items.length > 0 ? `
+                            <ul class="list-disc list-inside mt-2 text-${color}-700">
+                                ${items.map(item => `<li>${item.text}</li>`).join('')}
+                            </ul>
+                            ${recommendation ? `<p class="mt-3 text-sm text-${color}-800 font-semibold"><strong>Recommendation:</strong> ${recommendation}</p>` : ''}
+                            ${principle ? `<p class="mt-1 text-xs text-${color}-700"><i>Principe lié : ${principle}</i></p>` : ''}
+                            ${referenceKey ? `<p class="mt-1 text-xs text-${color}-700">${referenceText}</p>` : ''}
+                        ` : `<p class="mt-2 text-green-700 flex items-center gap-2">${renderLucideIcon('check-circle')}${emptyMessage}</p>`}
+                    </div>
+                `;
+            };
+
+            const content = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Étape 4 : Rapport d'analyse et observations </h2>
+                    <p class="text-slate-600 mt-1 mb-6"> Cet outil a été conçu comme <strong>un point de départ </strong>pour analyser l’alignement pédagogique d’un cours. Il ne prétend pas fournir une réponse clé en main ou se substituer à une évaluation approfondie. Toutefois, il peut servir <strong>de guide pour stimuler votre réflexion</strong> sur l’alignement pédagogique en vous rappelant quelques <strong>principes clés</strong> et en vous proposant des <strong>suggestions</strong>. En guise d’exemple et en fonction des informations que vous avez fournies, voici la matrice d’alignement correspondante.Les coches vertes (${renderLucideIcon('check-circle', 'inline w-4 h-4 text-green-600')}) indiquent un lien avec une évaluation, les bleues (${renderLucideIcon('check-circle', 'inline w-4 h-4 text-blue-600')}) un lien avec une activité d’apprentissage. </p>
+
+                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                        <table class="min-w-full border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 sticky-header">
+                                    <th class="p-3 border-b border-slate-300 text-left font-semibold text-slate-700">Objectifs d'apprentissage</th>
+                                    ${state.assessments.map(a => `<th class="p-3 border-b border-l border-slate-300 font-semibold text-slate-700 whitespace-nowrap">${a.text} (${a.weight}%)</th>`).join('')}
+                                    ${state.activities.map(act => `<th class="p-3 border-b border-l border-slate-300 font-semibold text-slate-700 whitespace-nowrap">${act.text}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${state.objectives.map((obj, index) => `
+                                    <tr class="bg-white even:bg-slate-50">
+                                        <td class="p-3 border-b border-slate-200 font-medium sticky-column">
+                                            <span class="font-bold">O${index + 1}:</span> ${obj.text}
+                                        </td>
+                                        ${state.assessments.map(a => `
+                                            <td class="p-3 border-b border-l border-slate-200 text-center">
+                                                ${a.linkedObjectiveIds.includes(obj.id) ? renderLucideIcon('check-circle', 'w-6 h-6 text-green-500 mx-auto') : ''}
+                                            </td>
+                                        `).join('')}
+                                        ${state.activities.map(act => `
+                                            <td class="p-3 border-b border-l border-slate-200 text-center">
+                                                ${act.linkedObjectiveIds.includes(obj.id) ? renderLucideIcon('check-circle', 'w-6 h-6 text-blue-500 mx-auto') : ''}
+                                            </td>
+                                        `).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Analyse globale et pistes de réflexion</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            ${renderAnalysisCard(
+                                "Objectifs NON ÉVALUÉS",
+                                "alert-triangle",
+                                analysis.unassessedObjectives,
+                                "red",
+                                " Un objectif non évalué peut être perçu comme facultatif ou moins important dans le cadre d’un cours, ce qui entrave directement l’alignement pédagogique de celui-ci.",
+                                "Tous vos objectifs sont évalués.",
+                                " Il serait très utile que, pour chacun de vos buts pédagogiques, vous prévoyiez au minimum un moyen de les évaluer. Cela montre l’importance de cet apprentissage et fournit des données sur l’acquisition des compétences. De plus, la variété des méthodes d’évaluation peut améliorer la validité.",
+                                "Cohérence de l'évaluation, variété des évaluations",
+                                "Biggs2011"
+                            )}
+                            ${renderAnalysisCard(
+                                "Objectifs NON PRATIQUÉS",
+                                "alert-triangle",
+                                analysis.unpracticedObjectives,
+                                "yellow",
+                                "Un objectif sans activité d'apprentissage peut être difficile à atteindre pour les personnes étudiantes.",
+                                "Tous vos objectifs sont supportés par des activités d’apprentissage.",
+                                " Nous vous suggérons d’inclure des activités et des exercices qui donnent aux personnes étudiantes l’occasion de mettre en pratique les compétences et connaissances nécessaires pour atteindre les objectifs. L’apprentissage est optimal lorsqu’il est actif et que l’on a des occasions de pratiquer.",
+                                "Apprentissage actif, charge cognitive",
+                                "Bonwell1991"
+                            )}
+                            ${renderAnalysisCard(
+                                "Évaluations sans objectif clair",
+                                "file-text",
+                                analysis.assessmentsWithoutObjectives,
+                                "orange",
+                                "Une évaluation devrait toujours mesurer un ou plusieurs objectifs d'apprentissage.",
+                                "Toutes les évaluations semblent bien alignées.",
+                                "Revoyez ces évaluations pour les lier explicitement à des objectifs existants, ou créez de nouveaux objectifs si nécessaire. N’oubliez pas que chaque évaluation doit avoir une intention pédagogique claire et fournir une rétroaction constructive.",
+                                "Validité de l'évaluation, rétroaction efficace",
+                                "Wiggins2005"
+                            )}
+                            ${renderAnalysisCard(
+                                "Activités sans objectif clair",
+                                "activity",
+                                analysis.activitiesWithoutObjectives,
+                                "indigo",
+                                "Une activité devrait toujours viser le développement d'un ou plusieurs objectifs.",
+                                "Toutes les activités semblent bien alignées.",
+                                " Nous vous suggérons de veiller à que chaque activité contribue directement à l'atteinte d'un ou plusieurs objectifs d'apprentissage. Privilégiez les activités collaboratives et variées pour maintenir l'engagement et gérer la charge cognitive.",
+                                "Pertinence pédagogique, apprentissage collaboratif",
+                                "Chickering1987"
+                            )}
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Quelques principes pédagogiques à découvrir ou à redécouvrir.</h3>
+                        <div class="grid md:grid-cols-1 gap-4">
+                            ${renderInfoBox("Alignement pédagogique", "target", `
+                                Le <strong>principe de l’alignement pédagogique</strong>, proposé par John Biggs, est essentiel pour assurer la cohérence entre les objectifs d’apprentissage, les méthodes d’enseignement et d’apprentissage, ainsi que les évaluations. Les personnes étudiantes construisent leur propre signification à travers des activités, et l’évaluation vérifie cette construction. Lorsque ces composantes sont alignées, l’apprentissage est plus efficace et significatif.
+
+                            `, "Biggs2011")}
+                            ${renderInfoBox("Apprentissage actif", "activity", `
+                                L'<strong>apprentissage actif</strong> implique que les personnes étudiantes s'engagent directement dans le processus d'apprentissage plutôt que de demeurer passives. Cela inclut des activités comme la résolution de problèmes, les discussions, les débats, les projets, etc. L'engagement actif améliore la compréhension, la rétention et le transfert des connaissances.
+                            `, "Bonwell1991")}
+                            ${renderInfoBox("Évaluation formative et sommative", "file-text", `
+                                L'<strong>évaluation formative</strong> est conçue pour surveiller l'apprentissage des étudiants et fournir une rétroaction continue pour améliorer l'enseignement et l'apprentissage. L'<strong>évaluation sommative</strong>, en revanche, a lieu à la fin d'une unité ou d'un cours pour évaluer l'apprentissage de l'étudiant par rapport à un standard. Un équilibre entre les deux est crucial pour soutenir le parcours d'apprentissage.
+                            `, "Black1998")}
+                            ${renderInfoBox("Design universel de l'apprentissage (UDL)", "lightbulb", `
+                                L'<strong>UDL</strong> est un cadre qui guide la conception d'environnements d'apprentissage flexibles pour répondre aux besoins divers des personnes étudiantes. Il repose sur trois principes : fournir de multiples moyens de représentation (le 'quoi' de l'apprentissage), de multiples moyens d'action et d'expression (le 'comment' de l'apprentissage), et de multiples moyens d'engagement (le 'pourquoi' de l'apprentissage). L'intégration de l'UDL favorise l'équité et l'inclusion.
+                            `, "CAST2018")}
+                            ${renderInfoBox("Rétroaction efficace", "message-square", `
+                                La <strong>rétroaction efficace</strong> s’avère très importante pour l'apprentissage. Elle doit être spécifique, opportune, orientée vers les objectifs d'apprentissage, et fournir des informations sur la manière d'améliorer la performance. Elle ne se limite pas à une note, mais guide la personne étudiante dans son processus d'apprentissage.
+                            `, "Hattie2007")}
+                            ${renderInfoBox("Charge cognitive", "brain", `
+                                La <strong>théorie de la charge cognitive</strong> suggère que la capacité de la mémoire de travail est limitée. Les activités d'apprentissage doivent être conçues pour minimiser la charge cognitive extrinsèque (distractions, complexité inutile) et maximiser la charge pertinente (liée à l'apprentissage).
+                            `, "Sweller1988")}
+                            ${renderInfoBox("Apprentissage collaboratif", "users", `
+                                L'<strong>apprentissage collaboratif</strong> implique que les personnes étudiantes travaillent ensemble (par exemple, en équipe) pour atteindre un objectif commun. Cette approche favorise l'engagement, le développement des compétences sociales et la construction de connaissances à travers l'interaction et la discussion.
+                            `, "Johnson1991")}
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Références </h3>
+                        <ul class="list-disc list-inside text-slate-700 space-y-2 text-sm">
+                            ${Object.values(fullReferences).map(ref => `<li>${ref}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="mt-8 flex flex-col sm:flex-row justify-between gap-4">
+                        <button id="edit-data-btn" class="bg-slate-200 text-slate-700 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition w-full sm:w-auto">Modifier les Données</button>
+                        <button id="reset-all-btn" class="flex items-center justify-center gap-2 bg-red-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition w-full sm:w-auto">
+                            ${renderLucideIcon('trash-2', 'w-5 h-5')}<span>Recommencer une nouvelle analyse</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('step-content').innerHTML = content;
+
+            // Ici EventListener
+            document.getElementById('edit-data-btn').addEventListener('click', () => setStep(1));
+            document.getElementById('reset-all-btn').addEventListener('click', resetAll);
+        };
+
+        // --- Gestion de l'état et des gestionnaires ---
+
+        /**
+         * Définit l'étape actuelle de l'application et rafraîchit l'interface utilisateur.
+         * @param {number} newStep - Le numéro de l'étape vers laquelle naviguer.
+         */
+        const setStep = (newStep) => {
+            state.step = newStep;
+            renderApp();
+        };
+
+        /**
+         * Ajoute un nouvel objectif à l'état.
+         * @param {Event} event - L'événement de soumission du formulaire.
+         */
+        const handleAddObjective = (event) => {
+            event.preventDefault();
+            const input = event.target.querySelector('input[type="text"]');
+            const text = input.value.trim();
+            if (text) {
+                state.objectives.push({ id: Date.now(), text, type: 'objective' });
+                input.value = '';
+                renderApp(); // Rafraîchir pour mettre à jour la liste et l'état du bouton
+            }
+        };
+
+        /**
+         * Ajoute une nouvelle évaluation à l'état.
+         * @param {Event} event - L'événement de soumission du formulaire.
+         */
+        const handleAddAssessment = (event) => {
+            event.preventDefault();
+            const textInput = document.getElementById('assessment-text');
+            const weightInput = document.getElementById('assessment-weight');
+            const text = textInput.value.trim();
+            const weight = parseInt(weightInput.value);
+
+            if (text && weight > 0 && weight <= 100) {
+                state.assessments.push({ id: Date.now(), text, weight, linkedObjectiveIds: [] });
+                textInput.value = '';
+                weightInput.value = '';
+                renderApp(); // Rafraîchir pour mettre à jour la liste et le poids total
+            } else {
+                // Retour visuel de base pour la validation (pourrait être amélioré avec une modale personnalisée)
+                console.error("Veuillez entrer un texte et une pondération valide (entre 1 et 100).");
+            }
+        };
+
+        /**
+         * Ajoute une nouvelle activité à l'état.
+         * @param {Event} event - L'événement de soumission du formulaire.
+         */
+        const handleAddActivity = (event) => {
+            event.preventDefault();
+            const input = document.getElementById('activity-text');
+            const text = input.value.trim();
+            if (text) {
+                state.activities.push({ id: Date.now(), text, linkedObjectiveIds: [] });
+                input.value = '';
+                renderApp(); // Rafraîchir pour mettre à jour la liste
+            }
+        };
+
+        /**
+         * Supprime un élément (objectif, évaluation ou activité) de l'état.
+         * @param {Event} event - L'événement de clic du bouton de suppression.
+         */
+        const handleDeleteItem = (event) => {
+            const id = parseInt(event.currentTarget.dataset.id);
+            const type = event.currentTarget.dataset.type;
+
+            if (type === 'objective') {
+                state.objectives = state.objectives.filter(item => item.id !== id);
+                // Supprimer également les liens des évaluations et des activités
+                state.assessments = state.assessments.map(a => ({
+                    ...a,
+                    linkedObjectiveIds: a.linkedObjectiveIds.filter(objId => objId !== id)
+                }));
+                state.activities = state.activities.map(a => ({
+                    ...a,
+                    linkedObjectiveIds: a.linkedObjectiveIds.filter(objId => objId !== id)
+                }));
+            } else if (type === 'assessment') {
+                state.assessments = state.assessments.filter(item => item.id !== id);
+            } else if (type === 'activity') {
+                state.activities = state.activities.filter(item => item.id !== id);
+            }
+            renderApp(); // Rafraîchir pour refléter les changements
+        };
+
+        /**
+         * Bascule le lien entre une évaluation et un objectif.
+         * @param {Event} event - L'événement de clic du bouton de lien.
+         */
+        const handleUpdateAssessmentLinks = (event) => {
+            const assessmentId = parseInt(event.currentTarget.dataset.assessmentId);
+            const objectiveId = parseInt(event.currentTarget.dataset.objectiveId);
+
+            state.assessments = state.assessments.map(a => {
+                if (a.id === assessmentId) {
+                    const newLinks = a.linkedObjectiveIds.includes(objectiveId)
+                        ? a.linkedObjectiveIds.filter(id => id !== objectiveId)
+                        : [...a.linkedObjectiveIds, objectiveId];
+                    return { ...a, linkedObjectiveIds: newLinks };
+                }
+                return a;
+            });
+            renderApp(); // Rafraîchir pour mettre à jour les styles des boutons
+        };
+
+        /**
+         * Bascule le lien entre une activité et un objectif.
+         * @param {Event} event - L'événement de clic du bouton de lien.
+         */
+        const handleUpdateActivityLinks = (event) => {
+            const activityId = parseInt(event.currentTarget.dataset.activityId);
+            const objectiveId = parseInt(event.currentTarget.dataset.objectiveId);
+
+            state.activities = state.activities.map(act => {
+                if (act.id === activityId) {
+                    const newLinks = act.linkedObjectiveIds.includes(objectiveId)
+                        ? act.linkedObjectiveIds.filter(id => id !== objectiveId)
+                        : [...act.linkedObjectiveIds, objectiveId];
+                    return { ...act, linkedObjectiveIds: newLinks };
+                }
+                return act;
+            });
+            renderApp(); // Rafraîchir pour mettre à jour les styles des boutons
+        };
+
+        /**
+         * Réinitialise toutes les données de l'application et retourne à l'étape 1.
+         */
+        const resetAll = () => {
+            state = {
+                step: 1,
+                objectives: [],
+                assessments: [],
+                activities: [],
+            };
+            renderApp(); // Rafraîchir toute l'application
+        };
+
+        // --- Fonction de rendu principale pour les étapes ---
+        const renderStepContent = () => {
+            switch (state.step) {
+                case 1:
+                    renderObjectivesStep();
+                    break;
+                case 2:
+                    renderAssessmentsStep();
+                    break;
+                case 3:
+                    renderActivitiesStep();
+                    break;
+                case 4:
+                    renderReportStep();
+                    break;
+                default:
+                    renderObjectivesStep();
+            }
+        };
+
+        // Rendu initial au chargement de la page
+        document.addEventListener('DOMContentLoaded', renderApp);
+    </script>
+</body>
+</html>
